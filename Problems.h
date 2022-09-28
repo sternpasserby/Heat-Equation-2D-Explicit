@@ -1,5 +1,5 @@
 #pragma once
-#define _USE_MATH_DEFINES //Для числа пи (константа M_PI)
+#define _USE_MATH_DEFINES //Ж’Р»В¤ С‡РёСЃР»Р° РїРё (РєРѕРЅСЃС‚Р°РЅС‚Р° M_PI)
 #include <math.h>
 
 double uExact1(double t, double x, double y);

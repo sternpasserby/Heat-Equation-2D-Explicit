@@ -1,57 +1,57 @@
 #include <iostream>
 #include <fstream>
 #include <string>
-#include <iomanip> // для setw()
+#include <iomanip> // РґР»СЏ setw()
 #include "Problems.h"
 
 /*
-В данной программе реализовано численное решение задачи Дирихле для уравнения теплопроводности в прямоугольнике. 
+Р’ РґР°РЅРЅРѕР№ РїСЂРѕРіСЂР°РјРјРµ СЂРµР°Р»РёР·РѕРІР°РЅРѕ С‡РёСЃР»РµРЅРЅРѕРµ СЂРµС€РµРЅРёРµ Р·Р°РґР°С‡Рё Р”РёСЂРёС…Р»Рµ РґР»СЏ СѓСЂР°РІРЅРµРЅРёСЏ С‚РµРїР»РѕРїСЂРѕРІРѕРґРЅРѕСЃС‚Рё РІ РїСЂСЏРјРѕСѓРіРѕР»СЊРЅРёРєРµ. 
 
-Краевые условия:
-При x = xMin u(t, x, y) = mu1(t, y)
-При x = xMax u(t, x, y) = mu2(t, y)
-При y = yMin u(t, x, y) = mu3(t, x)
-При y = yMax u(t, x, y) = mu4(t, x)
+РљСЂР°РµРІС‹Рµ СѓСЃР»РѕРІРёСЏ:
+РџСЂРё x = xMin u(t, x, y) = mu1(t, y)
+РџСЂРё x = xMax u(t, x, y) = mu2(t, y)
+РџСЂРё y = yMin u(t, x, y) = mu3(t, x)
+РџСЂРё y = yMax u(t, x, y) = mu4(t, x)
 
-Начальное условие: u(0, x, y) = phi(x, y). 
+РќР°С‡Р°Р»СЊРЅРѕРµ СѓСЃР»РѕРІРёРµ: u(0, x, y) = phi(x, y). 
 
-Выбрана явная схема метода конечных разностей. 
+Р’С‹Р±СЂР°РЅР° СЏРІРЅР°СЏ СЃС…РµРјР° РјРµС‚РѕРґР° РєРѕРЅРµС‡РЅС‹С… СЂР°Р·РЅРѕСЃС‚РµР№. 
 
-Решение задачи на данном временном шаге представлено в виде одномерного вектора u.
+Р РµС€РµРЅРёРµ Р·Р°РґР°С‡Рё РЅР° РґР°РЅРЅРѕРј РІСЂРµРјРµРЅРЅРѕРј С€Р°РіРµ РїСЂРµРґСЃС‚Р°РІР»РµРЅРѕ РІ РІРёРґРµ РѕРґРЅРѕРјРµСЂРЅРѕРіРѕ РІРµРєС‚РѕСЂР° u.
 */
 
-// Структура с параметрами дискретизации
+// РЎС‚СЂСѓРєС‚СѓСЂР° СЃ РїР°СЂР°РјРµС‚СЂР°РјРё РґРёСЃРєСЂРµС‚РёР·Р°С†РёРё
 struct Grid {
-	double xMin, xMax, yMin, yMax; // Границы прямоугольника
-	int Nx, Ny;                    // Число узлов сетки по оси X и оси Y соответственно
-	int N;                         // Общее число узлов
-	double hx, hy;                 // Шаг по оси X и оси Y соответственно
-	double hx_sq, hy_sq;           // Шаги по оси X и оси Y, возведённые в квадрат
-	double tau;                    // Шаг по времени
-	double T;                      // Максимальное значение параметра t
+	double xMin, xMax, yMin, yMax; // Р“СЂР°РЅРёС†С‹ РїСЂСЏРјРѕСѓРіРѕР»СЊРЅРёРєР°
+	int Nx, Ny;                    // Р§РёСЃР»Рѕ СѓР·Р»РѕРІ СЃРµС‚РєРё РїРѕ РѕСЃРё X Рё РѕСЃРё Y СЃРѕРѕС‚РІРµС‚СЃС‚РІРµРЅРЅРѕ
+	int N;                         // РћР±С‰РµРµ С‡РёСЃР»Рѕ СѓР·Р»РѕРІ
+	double hx, hy;                 // РЁР°Рі РїРѕ РѕСЃРё X Рё РѕСЃРё Y СЃРѕРѕС‚РІРµС‚СЃС‚РІРµРЅРЅРѕ
+	double hx_sq, hy_sq;           // РЁР°РіРё РїРѕ РѕСЃРё X Рё РѕСЃРё Y, РІРѕР·РІРµРґС‘РЅРЅС‹Рµ РІ РєРІР°РґСЂР°С‚
+	double tau;                    // РЁР°Рі РїРѕ РІСЂРµРјРµРЅРё
+	double T;                      // РњР°РєСЃРёРјР°Р»СЊРЅРѕРµ Р·РЅР°С‡РµРЅРёРµ РїР°СЂР°РјРµС‚СЂР° t
 };
 
-// Указатели на функции реализованы как глобальные переменные, чтобы не писать огромную сигнатуру
-// для подпрограмм, которые используют эти функции
+// РЈРєР°Р·Р°С‚РµР»Рё РЅР° С„СѓРЅРєС†РёРё СЂРµР°Р»РёР·РѕРІР°РЅС‹ РєР°Рє РіР»РѕР±Р°Р»СЊРЅС‹Рµ РїРµСЂРµРјРµРЅРЅС‹Рµ, С‡С‚РѕР±С‹ РЅРµ РїРёСЃР°С‚СЊ РѕРіСЂРѕРјРЅСѓСЋ СЃРёРіРЅР°С‚СѓСЂСѓ
+// РґР»СЏ РїРѕРґРїСЂРѕРіСЂР°РјРј, РєРѕС‚РѕСЂС‹Рµ РёСЃРїРѕР»СЊР·СѓСЋС‚ СЌС‚Рё С„СѓРЅРєС†РёРё
 double (*uExact)(double, double, double);
 double (*f)(double, double, double);
 double (*phi)(double, double);
-double (*mu_xMin)(double, double, double); // Значение решения на границе x = xMin
+double (*mu_xMin)(double, double, double); // Р—РЅР°С‡РµРЅРёРµ СЂРµС€РµРЅРёСЏ РЅР° РіСЂР°РЅРёС†Рµ x = xMin
 double (*mu_xMax)(double, double, double);
 double (*mu_yMin)(double, double, double);
 double (*mu_yMax)(double, double, double);
 
-void assignUOnBorders(double* u, Grid grid, double t);                 // Присвоить вектору u значения краевых функций
-void initU(double* u, Grid grid);                                      // Инициализировать решение u
-void gridInfoToFile(std::string filename, Grid grid);                  // Записать в заголовок файла информацию о сетке grid
-void writeArrayToStream(double* ar, int N, std::ostream& streamOut);   // Дописать в поток вывода ostream массив в виде строки
-void getExactSolution(double* ar, Grid grid, double t);                // Записать в массив ar значения точного решения
-void getDiff(double* diffAr, double* a1, double* a2, int N);           // Записать в массив diffAr модуль разности векторов a1 и a2
-void copyArray(double* dest, double* source, int N);                   // Скопировать массив source в массив dest
+void assignUOnBorders(double* u, Grid grid, double t);                 // РџСЂРёСЃРІРѕРёС‚СЊ РІРµРєС‚РѕСЂСѓ u Р·РЅР°С‡РµРЅРёСЏ РєСЂР°РµРІС‹С… С„СѓРЅРєС†РёР№
+void initU(double* u, Grid grid);                                      // РРЅРёС†РёР°Р»РёР·РёСЂРѕРІР°С‚СЊ СЂРµС€РµРЅРёРµ u
+void gridInfoToFile(std::string filename, Grid grid);                  // Р—Р°РїРёСЃР°С‚СЊ РІ Р·Р°РіРѕР»РѕРІРѕРє С„Р°Р№Р»Р° РёРЅС„РѕСЂРјР°С†РёСЋ Рѕ СЃРµС‚РєРµ grid
+void writeArrayToStream(double* ar, int N, std::ostream& streamOut);   // Р”РѕРїРёСЃР°С‚СЊ РІ РїРѕС‚РѕРє РІС‹РІРѕРґР° ostream РјР°СЃСЃРёРІ РІ РІРёРґРµ СЃС‚СЂРѕРєРё
+void getExactSolution(double* ar, Grid grid, double t);                // Р—Р°РїРёСЃР°С‚СЊ РІ РјР°СЃСЃРёРІ ar Р·РЅР°С‡РµРЅРёСЏ С‚РѕС‡РЅРѕРіРѕ СЂРµС€РµРЅРёСЏ
+void getDiff(double* diffAr, double* a1, double* a2, int N);           // Р—Р°РїРёСЃР°С‚СЊ РІ РјР°СЃСЃРёРІ diffAr РјРѕРґСѓР»СЊ СЂР°Р·РЅРѕСЃС‚Рё РІРµРєС‚РѕСЂРѕРІ a1 Рё a2
+void copyArray(double* dest, double* source, int N);                   // РЎРєРѕРїРёСЂРѕРІР°С‚СЊ РјР°СЃСЃРёРІ source РІ РјР°СЃСЃРёРІ dest
 
 int main() {
-	// Условия задачи
-	// Вариант 1
+	// РЈСЃР»РѕРІРёСЏ Р·Р°РґР°С‡Рё
+	// Р’Р°СЂРёР°РЅС‚ 1
 	uExact = uExact1;
 	f = f1;
 	phi = phi1;
@@ -65,7 +65,7 @@ int main() {
 	grid1.yMin = 0;
 	grid1.yMax = M_PI;
 
-	// Вариант 2
+	// Р’Р°СЂРёР°РЅС‚ 2
 	/*uExact = uExact2;
 	f = f2;
 	phi = phi2;
@@ -79,7 +79,7 @@ int main() {
 	grid1.yMin = -2;
 	grid1.yMax = 2;*/
 
-	// Инициализация параметров сетки
+	// РРЅРёС†РёР°Р»РёР·Р°С†РёСЏ РїР°СЂР°РјРµС‚СЂРѕРІ СЃРµС‚РєРё
 	grid1.Nx = 20;
 	grid1.Ny = 30;
 	grid1.N = grid1.Nx * grid1.Ny;
@@ -98,19 +98,19 @@ int main() {
 		return 0;
 	}
 
-	// Вывод в файл шапку с необходимой информацией
+	// Р’С‹РІРѕРґ РІ С„Р°Р№Р» С€Р°РїРєСѓ СЃ РЅРµРѕР±С…РѕРґРёРјРѕР№ РёРЅС„РѕСЂРјР°С†РёРµР№
 	std::string filename = "Results.txt";
 	gridInfoToFile(filename, grid1);
 
-	// Инициализация u, u1 и diffArray в момент времени 0
-	double* uPast = new double[grid1.N];      // Массив для приближенного решения
-	double* u1 = new double[grid1.N];         // Массив для точного решения
-	double* diffArray = new double[grid1.N];  // Массив для разницы точного и приближенного решений
+	// РРЅРёС†РёР°Р»РёР·Р°С†РёСЏ u, u1 Рё diffArray РІ РјРѕРјРµРЅС‚ РІСЂРµРјРµРЅРё 0
+	double* uPast = new double[grid1.N];      // РњР°СЃСЃРёРІ РґР»СЏ РїСЂРёР±Р»РёР¶РµРЅРЅРѕРіРѕ СЂРµС€РµРЅРёСЏ
+	double* u1 = new double[grid1.N];         // РњР°СЃСЃРёРІ РґР»СЏ С‚РѕС‡РЅРѕРіРѕ СЂРµС€РµРЅРёСЏ
+	double* diffArray = new double[grid1.N];  // РњР°СЃСЃРёРІ РґР»СЏ СЂР°Р·РЅРёС†С‹ С‚РѕС‡РЅРѕРіРѕ Рё РїСЂРёР±Р»РёР¶РµРЅРЅРѕРіРѕ СЂРµС€РµРЅРёР№
 	initU(uPast, grid1);
 	getExactSolution(u1, grid1, 0);
 	getDiff(diffArray, uPast, u1, grid1.N);
 
-	// Вывод массивов в файл
+	// Р’С‹РІРѕРґ РјР°СЃСЃРёРІРѕРІ РІ С„Р°Р№Р»
 	std::ofstream outstream(filename, std::ios::app);
 	outstream << std::setw(14) << std::setprecision(4) << 0.0000;
 	writeArrayToStream(uPast, grid1.N, outstream);
@@ -125,7 +125,7 @@ int main() {
 	double Cx = grid1.tau / grid1.hx_sq;
 	double Cy = grid1.tau / grid1.hy_sq;
 	int s;
-	double tau2 = 1.0 / 30.0;  // Период сохранения решения в файл
+	double tau2 = 1.0 / 30.0;  // РџРµСЂРёРѕРґ СЃРѕС…СЂР°РЅРµРЅРёСЏ СЂРµС€РµРЅРёСЏ РІ С„Р°Р№Р»
 	double t2 = 0.0;         
 	double* uNew = new double[grid1.N];
 	while (t < grid1.T) {
@@ -133,7 +133,7 @@ int main() {
 		printf("t = %8.4f of %8.4f\r", t, grid1.T);
 		assignUOnBorders(uNew, grid1, t);
 
-		//Вычисление решения на новом шаге
+		//Р’С‹С‡РёСЃР»РµРЅРёРµ СЂРµС€РµРЅРёСЏ РЅР° РЅРѕРІРѕРј С€Р°РіРµ
 		for (int i = 1; i < grid1.Ny - 1; i++) {
 			for (int j = 1; j < grid1.Nx - 1; j++) {
 				x = grid1.xMin + grid1.hx * j;
@@ -147,11 +147,11 @@ int main() {
 		if (t > t2) {
 			t2 += tau2;
 
-			//Вычисление точного решения и разницы между точным и приближённым решениями
+			//Р’С‹С‡РёСЃР»РµРЅРёРµ С‚РѕС‡РЅРѕРіРѕ СЂРµС€РµРЅРёСЏ Рё СЂР°Р·РЅРёС†С‹ РјРµР¶РґСѓ С‚РѕС‡РЅС‹Рј Рё РїСЂРёР±Р»РёР¶С‘РЅРЅС‹Рј СЂРµС€РµРЅРёСЏРјРё
 			getExactSolution(u1, grid1, t);
 			getDiff(diffArray, uNew, u1, grid1.N);
 
-			//Вывод в файл
+			//Р’С‹РІРѕРґ РІ С„Р°Р№Р»
 			outstream << std::setw(14) << std::setprecision(4) << t;
 			writeArrayToStream(uNew, grid1.N, outstream);
 			outstream << std::setw(14) << "";
@@ -164,7 +164,7 @@ int main() {
 	}
 	printf("t = %8.4f of %8.4f\n", t, grid1.T);
 
-	// Удаление сущностей
+	// РЈРґР°Р»РµРЅРёРµ СЃСѓС‰РЅРѕСЃС‚РµР№
 	delete[] uPast;
 	delete[] uNew;
 	delete[] u1;
@@ -179,14 +179,14 @@ void assignUOnBorders(double* u, Grid grid, double t) {
 	double y;
 	for (int i = 0; i < grid.Ny; i++) {
 		y = grid.yMin + i * grid.hy;
-		u[i * grid.Nx] = mu_xMin(t, grid.xMin, y);                 // Решение вдоль границы x = xMin
-		u[grid.Nx - 1 + i * grid.Nx] = mu_xMax(t, grid.xMax, y);   // Решение вдоль границы x = xMax
+		u[i * grid.Nx] = mu_xMin(t, grid.xMin, y);                 // Р РµС€РµРЅРёРµ РІРґРѕР»СЊ РіСЂР°РЅРёС†С‹ x = xMin
+		u[grid.Nx - 1 + i * grid.Nx] = mu_xMax(t, grid.xMax, y);   // Р РµС€РµРЅРёРµ РІРґРѕР»СЊ РіСЂР°РЅРёС†С‹ x = xMax
 	}
 	double x;
 	for (int j = 0; j < grid.Nx; j++) {
 		x = grid.xMin + j * grid.hx;
-		u[j] = mu_yMin(t, x, grid.yMin);                           // Решение вдоль границы y = yMin
-		u[j + (grid.Ny - 1) * grid.Nx] = mu_yMax(t, x, grid.yMax); // Решение вдоль границы y = yMax
+		u[j] = mu_yMin(t, x, grid.yMin);                           // Р РµС€РµРЅРёРµ РІРґРѕР»СЊ РіСЂР°РЅРёС†С‹ y = yMin
+		u[j + (grid.Ny - 1) * grid.Nx] = mu_yMax(t, x, grid.yMax); // Р РµС€РµРЅРёРµ РІРґРѕР»СЊ РіСЂР°РЅРёС†С‹ y = yMax
 	}
 }
 
